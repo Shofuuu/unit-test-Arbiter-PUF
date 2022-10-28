@@ -99,7 +99,7 @@ void rdchgb (uint64_t *challenge) { // Random Challenge Bits
     srand(time(&t));
     
     for (int x=0;x<8;x++) {
-        rnum = ((time(&t) - (rand()%255)) % 255) - (rand()%25); // just random things
+        rnum = (rand()%255); // just random things
 
         if (rnum == 0xFF) {
             rnum = ((rand()%1024) - (rand()%321))%255; // just random things
