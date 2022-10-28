@@ -166,7 +166,7 @@ void logfwr (struct parameters *p) {
         rspstr(&response, tmp_rsp);
         wlog(p, BODY_DOCS);
 
-        sprintf(str_print, "[Info:generating] CHG:RSP (%lX > %lX) : [%0.1f] ", rchg, response, percent);
+        sprintf(str_print, "[Info:generating] CHG:RSP (%lX > %lX) : [%0.1f%%] ", rchg, response, percent);
         printf("%s", str_print);
         
         for (int b=0;b<len((const char*)str_print);b++) {

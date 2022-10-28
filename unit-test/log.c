@@ -49,8 +49,8 @@ int wlog (struct parameters *p, unsigned char mode) {
 
         strftime(gtime, size, "%d/%m/%Y - %H:%M:%S", ntm);
 
-        fprintf(file, "FPGA Arbiter PUF CRP\n");
-        fprintf(file, "Created at : %s\n", gtime);
+        fprintf(file, "FPGA Arbiter PUF CRP,\n");
+        fprintf(file, "Created at : %s,\n", gtime);
         fprintf(file, "Challenge,Response\n");
 
         free(gtime);
