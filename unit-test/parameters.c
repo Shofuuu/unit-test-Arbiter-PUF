@@ -94,15 +94,16 @@ void dbgmsg (const char *label, const char *msg, ...) {
 void rdchgb (uint64_t *challenge) { // Random Challenge Bits
     uint64_t tmp = 0;
     uint8_t rnum = 0;
-    time_t t;
+    struct timeval t;
 
-    srand(time(&t));
+    gettimeofday(&t, NULL);
+    srand(t.tv_usec);
     
     for (int x=0;x<8;x++) {
-        rnum = (rand()%255); // just random things
+        rnum = (t.tv_usec - rand())%255; // just random things
 
         if (rnum == 0xFF) {
-            rnum = ((rand()%1024) - (rand()%321))%255; // just random things
+            rnum = ((t.tv_usec/3) + rand())%255; // just random things
         }
     
         tmp |= ((uint64_t)rnum << (x*8));

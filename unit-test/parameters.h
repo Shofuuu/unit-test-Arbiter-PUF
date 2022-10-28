@@ -16,7 +16,7 @@
 #include <stdlib.h>
 #include <stdarg.h>
 #include <stdint.h>
-#include <time.h>
+#include <sys/time.h>
 
 struct parameters{
     char *fname;
