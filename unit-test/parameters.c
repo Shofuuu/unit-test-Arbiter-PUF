@@ -25,6 +25,9 @@ void uparsetattr (struct parameters *p) {
 
     p->k = 8;
     p->n = 100;
+
+    p->resuming = 0;
+    p->unfinished = 0;
 }
 
 /* String purpose */

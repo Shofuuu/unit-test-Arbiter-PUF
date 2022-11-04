@@ -15,7 +15,7 @@
 #include "uart.h"
 #include "log.h"
 
-#define MAX_HELPMSG 12
+#define MAX_HELPMSG 16
 
 void logfwr (struct parameters *p);
 
@@ -33,11 +33,14 @@ int main(int argc, char* argv[]) {
         " puflog -o [output] -n [iteration log]\r\n",
         " puflog -o [output] -n [iteration log] -k [iteration avg]\r\n",
         " puflog -o [output] -k [iteration avg]\r\n",
+        " puflog -o [output] -c\r\n",
+        " puflog -o [output] -f [challenge file]"
         "\nInformation :\r\n",
         " \"k\" has default value 8\r\n",
         " \"n\" has default value 100\r\n",
         " \"p\" has default value /dev/ttyUSB0\r\n",
-        " \"b\" has default value 9600\r\n"
+        " \"b\" has default value 9600\r\n",
+        " \"c\" used to continue last work\r\n"
     };
 
     char opt = 0;
@@ -46,7 +49,7 @@ int main(int argc, char* argv[]) {
     struct parameters p;
     uparsetattr(&p);
 
-    while( (opt = getopt(argc, argv, "ho:n:k:p:b:")) != -1 ){
+    while( (opt = getopt(argc, argv, "hco:n:k:p:b:f:")) != -1 ){
         switch(opt){
             /* Help message */
             case 'h':
@@ -79,6 +82,11 @@ int main(int argc, char* argv[]) {
 
             case 'b':
                 p.baudrate = atoi(optarg);
+                valid++;
+            break;
+
+            case 'c':
+                p.resuming = 1;
                 valid++;
             break;
 
@@ -121,11 +129,38 @@ void logfwr (struct parameters *p) {
 
     int ret = 0;
     float percent = 0;
+    uint8_t first_itr = 1;
 
-    wlog(p, HEAD_DOCS);
+    if (p->resuming) {
+        printf("[Info:logfwr] Resuming previous work..\r\n");
 
-    for (uint32_t x=0;x<(p->n);x++) {
-        percent = ((float)x / ((float)(p->n)-1)) * 100.0;
+        if (acsbl(p) != 0) {
+            printf("[Err:logfwr] There's no saved jobs!\r\n");
+            return;
+        }
+
+        ctylog(p);
+
+        if ((((float)((p->unfinished)) / (float)((p->n)-1)) * 100) > 100) {
+            printf("[Info:logfwr] No jobs left.\r\n");
+            return;
+        }
+
+        printf("[Info:logfwr] Resuming k at %d\r\n", p->k);
+        printf("[Info:logfwr] Resuming n at %d\r\n", p->n);
+        printf("[Info:logfwr] Last work progress %0.1f%%\r\n", (((float)((p->unfinished)) / (float)((p->n)-1)) * 100));
+    } else {
+        wlog(p, HEAD_DOCS);
+    }
+
+    for (uint32_t avgcnt = 0;avgcnt<(p->n);avgcnt++) {
+        if (p->resuming && first_itr) {
+            avgcnt = p->unfinished;
+
+            first_itr = 0;
+        }
+
+        percent = ((float)avgcnt / ((float)(p->n)-1)) * 100.0;
         rdchgb(&rchg);
 
         while (1) {
@@ -142,7 +177,7 @@ void logfwr (struct parameters *p) {
         chbstr(challenge, rchg);
         p->challenge = challenge;
 
-        for (uint8_t y=0;y<(p->k);y++) {
+        for (uint8_t itrcnt = 0;itrcnt<(p->k);itrcnt++) {
             if (uart_begin(p) < 0) {
                 printf("[Err:logfwr] Failed to initialize uart!\r\n");
                 return;
@@ -166,7 +201,7 @@ void logfwr (struct parameters *p) {
         rspstr(&response, tmp_rsp);
         wlog(p, BODY_DOCS);
 
-        sprintf(str_print, "[Info:generating] CHG:RSP (%lX > %lX) : [%0.1f%%] ", rchg, response, percent);
+        sprintf(str_print, "[Info:generating] CHG:RSP (%lX > %lX) : [%0.1f%%]  ", rchg, response, percent); // extra space needed to clear screen buffer
         printf("%s", str_print);
         
         for (int b=0;b<len((const char*)str_print);b++) {

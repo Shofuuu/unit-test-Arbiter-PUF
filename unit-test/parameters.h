@@ -10,8 +10,6 @@
 //#define GLOBAL_DEBUG_ENABLED    1
 #define MAX_BUFFER_BYTE         4
 
-#define MOVEXY(x,y)             printf("\033[%d;%dH", x, y)
-
 #include <stdio.h>
 #include <stdlib.h>
 #include <stdarg.h>
@@ -32,6 +30,9 @@ struct parameters{
     
     uint8_t k; // average
     uint32_t n;  // logging
+    
+    uint8_t resuming;
+    uint32_t unfinished;
 };
 
 /* Uart Parameters Set Attribute */

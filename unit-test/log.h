@@ -20,5 +20,9 @@
 #define HEAD_DOCS   0xFF
 
 int wlog (struct parameters *p, unsigned char mode);
+int ctylog (struct parameters *p); // continue log, get the total lines and continue the process
+
+void parstr (const char* str, uint32_t *value); // parse str, parsing the value of k and n from a single string
+int acsbl (struct parameters *p); // is the file accessible?
 
 #endif // LOG_H
