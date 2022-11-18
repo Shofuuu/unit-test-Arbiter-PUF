@@ -46,8 +46,8 @@ size_t len (const char *str);
 extern int __glob_dbg_cnt;
 
 /* Bit manipulator */
-void chbstr (uint8_t *dst, uint64_t src); // Challenge byte64 to single string
-void rspstr (uint64_t *dst, uint8_t *src); // Response single string to byte64
+void uint64str (uint8_t *dst, uint64_t src); // 64-bit to single string
+void struint64 (uint64_t *dst, uint8_t *src); // single string to 64-bit
 
 /* Debug purpose */
 void dbgmsg (const char *label, const char *msg, ...);

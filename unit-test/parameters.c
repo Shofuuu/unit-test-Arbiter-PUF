@@ -54,23 +54,20 @@ size_t len (const char *str) {
 }
 
 /* Bit manipulator */
-void chbstr (uint8_t *dst, uint64_t src) { // Challenge byte64 to single string
-    uint8_t *tmp = malloc(8 * sizeof(dst));
+void uint64str (uint8_t *dst, uint64_t src) { // 64-bit to single string
+    *dst = 0;
 
     for (int x=0;x<8;x++) {
-        tmp[7-x] = (src & ((uint64_t)0x00000000000000ff << (x*8))) >> (x*8);
-        dst[7-x] = tmp[7-x];
+        dst[7-x] = (src & ((uint64_t)0x00000000000000ff << (x*8))) >> (x*8);
     }
-
-    free(tmp);
 }
 
-void rspstr (uint64_t *dst, uint8_t *src) { // Response single string to byte64
+void struint64 (uint64_t *dst, uint8_t *src) { // single string to 64-bit
     *dst = 0;
 
     for (int x=0;x<8;x++) {
         *dst |= (uint64_t)( (uint64_t)src[7-x] << (x*8));
-        dbgmsg("rspstr", "tmp process : %lX\r\n", dst);
+        // dbgmsg("rspstr", "tmp process : %lX\r\n", dst);
     }
 }
 
@@ -105,12 +102,11 @@ void rdchgb (uint64_t *challenge) { // Random Challenge Bits
     for (int x=0;x<8;x++) {
         rnum = (t.tv_usec - rand())%255; // just random things
 
-        if (rnum == 0xFF) {
+        if (rnum >= 0x7F) {
             rnum = ((t.tv_usec/3) + rand())%255; // just random things
         }
     
         tmp |= ((uint64_t)rnum << (x*8));
-        dbgmsg("rdchgb", "rnum : %X, tmp : %lX\r\n", (unsigned int)rnum, tmp);
     }
 
     *challenge = tmp;

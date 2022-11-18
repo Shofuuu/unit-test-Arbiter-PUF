@@ -27,20 +27,21 @@ int main(int argc, char* argv[]) {
 
     const char *helpmsg[MAX_HELPMSG] = {
         "Help information :\r\n",
-        " puflog [h, o, n, k, p, b]\r\n",
+        " puflog [h, o, n, k, p, b, i, f]\r\n",
         "\nExample :\r\n",
         " puflog -o [output]\r\n",
         " puflog -o [output] -n [iteration log]\r\n",
         " puflog -o [output] -n [iteration log] -k [iteration avg]\r\n",
         " puflog -o [output] -k [iteration avg]\r\n",
         " puflog -o [output] -c\r\n",
-        " puflog -o [output] -f [challenge file]"
+        " puflog -o [output] -i [generated CRP file] -f [format number]\r\n",
         "\nInformation :\r\n",
         " \"k\" has default value 8\r\n",
         " \"n\" has default value 100\r\n",
         " \"p\" has default value /dev/ttyUSB0\r\n",
         " \"b\" has default value 9600\r\n",
-        " \"c\" used to continue last work\r\n"
+        " \"c\" used to continue last work\r\n",
+        " \"f\" available formats are \"bin\" (binary) and \"dec\" (decimal)\r\n"
     };
 
     char opt = 0;
@@ -49,7 +50,7 @@ int main(int argc, char* argv[]) {
     struct parameters p;
     uparsetattr(&p);
 
-    while( (opt = getopt(argc, argv, "hco:n:k:p:b:f:")) != -1 ){
+    while( (opt = getopt(argc, argv, "hco:n:k:p:b:f:i:")) != -1 ){
         switch(opt){
             /* Help message */
             case 'h':
@@ -119,18 +120,7 @@ void logfwr (struct parameters *p) {
     printf("[Info:logfwr] Port location set to : %s\r\n", p->port);
     printf("[Info:logfwr] Logging to : %s\r\n", p->fname);
     printf("[Info:logfwr] k val : %d, n val : %d\r\n", p->k, p->n);
-
-    uint8_t *challenge = malloc(8 * sizeof(uint8_t));
-    uint64_t response = 0;
-    uint64_t rchg = 0, pre_rchg = 0;
-    uint64_t *avg_crp = malloc((p->k) * sizeof(uint64_t));
-    uint8_t tmp_rsp[8];
-    char *str_print = malloc(80 * sizeof(char));
-
-    int ret = 0;
-    float percent = 0;
-    uint8_t first_itr = 1;
-
+    
     if (p->resuming) {
         printf("[Info:logfwr] Resuming previous work..\r\n");
 
@@ -152,6 +142,17 @@ void logfwr (struct parameters *p) {
     } else {
         wlog(p, HEAD_DOCS);
     }
+    
+    uint8_t *challenge = malloc(8 * sizeof(uint8_t));
+    uint64_t response = 0;
+    uint64_t rchg = 0, pre_rchg = 0;
+    uint64_t *avg_crp = malloc((p->k) * sizeof(uint64_t));
+    uint8_t tmp_rsp[8];
+    char *str_print = malloc(80 * sizeof(char)); // string buffer to display string
+
+    int ret = 0;
+    float percent = 0;
+    uint8_t first_itr = 1; 
 
     for (uint32_t avgcnt = 0;avgcnt<(p->n);avgcnt++) {
         if (p->resuming && first_itr) {
@@ -174,8 +175,10 @@ void logfwr (struct parameters *p) {
 
         dbgmsg("logfwr", "generated : %lX\r\n", rchg);
 
-        chbstr(challenge, rchg);
+        uint64str(challenge, rchg);
         p->challenge = challenge;
+
+        uint8_t crp_idx = 0;
 
         for (uint8_t itrcnt = 0;itrcnt<(p->k);itrcnt++) {
             if (uart_begin(p) < 0) {
@@ -188,26 +191,60 @@ void logfwr (struct parameters *p) {
                 return;
             }
 
+
             for (int i=0;i<8;i++) {
                 tmp_rsp[i] = p->response[i];
-                avg_crp[i] += tmp_rsp[i];
+            }
+
+            struint64(&response, tmp_rsp);
+            avg_crp[crp_idx] = response;
+
+            printf("RESPONSE [%d] : ", crp_idx);
+            for (int x=0;x<64;x++) {
+                printf("%d", ((response & (1 << (63-x))) > 0 ? 1:0));
+            }
+            printf(" : %lX \r\n", response);
+
+            crp_idx++;
+        }
+
+        uint64_t rspdata = 0;
+        uint64_t rspavg = 0;
+        uint8_t tmpbits = 0;
+
+        for (int y=0;y<64;y++){  // 64-bits Response
+            for (int x=0;x<crp_idx;x++) {
+                rspdata = avg_crp[x];
+
+                for (int z=0;z<crp_idx;z++) {
+                    tmpbits += ((rspdata & (1 << y)) > 0 ? 1:0);
+                }
+                
+                tmpbits /= crp_idx;
+                if (tmpbits) rspavg |= (1 << y);
+                tmpbits = 0;
             }
         }
+        
+        printf("EXPECTED : %lX\r\n", rspavg);
+        uint64str(tmp_rsp, rspavg);
+        p->response = tmp_rsp;
 
-        for (int a=0;a<8;a++) {
-            tmp_rsp[a] = (avg_crp[a]/(p->k));
+        printf("OUTPUT : ");
+        for (int x=0;x<8;x++) {
+            printf("%lX", p->response[x]);
         }
+        printf("\r\n");
 
-        rspstr(&response, tmp_rsp);
         wlog(p, BODY_DOCS);
 
-        sprintf(str_print, "[Info:generating] CHG:RSP (%lX > %lX) : [%0.1f%%]  ", rchg, response, percent); // extra space needed to clear screen buffer
+        /*sprintf(str_print, "[Info:generating] CHG:RSP (%lX > %lX) : [%0.1f%%]  ", rchg, avg_crp[0], percent); // extra space needed to clear screen buffer
         printf("%s", str_print);
         
         for (int b=0;b<len((const char*)str_print);b++) {
             printf("\b");
         }
-        fflush(stdout);
+        fflush(stdout);*/
     }
 
     printf("\r\n");
