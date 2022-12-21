@@ -9,6 +9,8 @@
 
 //#define GLOBAL_DEBUG_ENABLED    1
 #define MAX_BUFFER_BYTE         4
+#define DATAWIDTH_BIT           128
+#define DATAWIDTH_BYTE          16
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -20,12 +22,13 @@ struct parameters{
     char *fname;
     char *fmode;
 
+    char *crpfname;
+    char *format;
+
     char *port;
     int baudrate;
     int serial;
 
-    uint8_t *challenge;
-    uint8_t *response;
     int obytes;
     
     uint8_t k; // average
@@ -35,6 +38,11 @@ struct parameters{
     uint32_t unfinished;
 };
 
+union data_bits_u {
+    uint8_t byte[DATAWIDTH_BYTE];
+    uint64_t data[DATAWIDTH_BYTE/8];
+};
+
 /* Uart Parameters Set Attribute */
 void uparsetattr (struct parameters *p);
 
@@ -42,18 +50,16 @@ void uparsetattr (struct parameters *p);
 int cpy (char *dst, const char *src, size_t size);
 size_t len (const char *str);
 
-/* Debug purpose */
-extern int __glob_dbg_cnt;
-
-/* Bit manipulator */
-void uint64str (uint8_t *dst, uint64_t src); // 64-bit to single string
-void struint64 (uint64_t *dst, uint8_t *src); // single string to 64-bit
-
-/* Debug purpose */
-void dbgmsg (const char *label, const char *msg, ...);
-
 /* 64-bit randomizer challenge */
-void rdchgb (uint64_t *challenge); // Random Challenge Bits 
+void randomizer (union data_bits_u *c); // Random Challenge Bits 
+
+/* file utility */
+#define BUFFER_TEXT_FLINES  210
+
+uint32_t flines (const char *flname);
+
+/* string formating */
+void strcrpbin (union data_bits_u *d, char *str);
 
 #endif // PARAMETERS_H
 

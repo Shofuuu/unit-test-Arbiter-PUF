@@ -10,7 +10,7 @@
 
 #include "log.h"
 
-int wlog (struct parameters *p, unsigned char mode) {
+int wlog (struct parameters *p, union data_bits_u *c, union data_bits_u *r, unsigned char mode) {
     FILE *file;
     int valid = 0;
 
@@ -20,15 +20,31 @@ int wlog (struct parameters *p, unsigned char mode) {
         
         if (file == NULL) valid = -1;
         
-        for (int x=0;x<8;x++) {
-            fprintf(file, "%c%X ", (p->challenge[x] <= 15 ? '0':'\0'), p->challenge[x]);
+        fprintf(file, "0b");
+        for (uint8_t x=0;x<16;x++) {
+            for (uint8_t y=0;y<8;y++) {
+                fprintf(file, "%d", ((c->byte[x] & (1 << (7-y))) ? 1:0));
+            }
         }
 
         fprintf(file, ",");
 
-        for (int x=0;x<8;x++) {
-            fprintf(file, "%c%X ", (p->response[x] <= 15 ? '0':'\0'), p->response[x]);
-            dbgmsg("wlog", "Response : %X\r\n", (unsigned int)p->response[x]);
+        for (int x=0;x<16;x++) {
+            fprintf(file, "%c%X ", (c->byte[x] <= 15 ? '0':'\0'), c->byte[x]);
+        }
+
+        fprintf(file, ",0b");
+
+        for (uint8_t x=0;x<16;x++) {
+            for (uint8_t y=0;y<8;y++) {
+                fprintf(file, "%d", ((r->byte[x] & (1 << (7-y))) ? 1:0));
+            }
+        }
+
+        fprintf(file, ",");
+
+        for (int x=0;x<16;x++) {
+            fprintf(file, "%c%X ", (r->byte[x] <= 15 ? '0':'\0'), r->byte[x]);
         }
 
         fprintf(file, "\n");
@@ -49,10 +65,10 @@ int wlog (struct parameters *p, unsigned char mode) {
 
         strftime(gtime, size, "%d/%m/%Y - %H:%M:%S", ntm);
 
-        fprintf(file, "FPGA Arbiter PUF CRP,\n");
-        fprintf(file, "Created at : ,%s\n", gtime);
-        fprintf(file, "k value : %d, n value : %d\n", p->k, p->n);
-        fprintf(file, "Challenge,Response\n");
+        fprintf(file, "FPGA Arbiter PUF CRP,,,\n");
+        fprintf(file, "Created at : %s,,,\n", gtime);
+        fprintf(file, "k value : %d, n value : %d,,\n", p->k, p->n);
+        fprintf(file, "Challenge (BIN), Challenge (HEX), Response(BIN), Response(HEX),\n");
 
         free(gtime);
     }
@@ -62,10 +78,12 @@ int wlog (struct parameters *p, unsigned char mode) {
     return valid;
 }
 
+#define BUFFER_STR  150
+
 int ctylog (struct parameters* p) {
     FILE *file = fopen(p->fname, "a+");
     int valid = 0;
-    char tmp_str[78];
+    char tmp_str[BUFFER_STR];
 
     if (file == NULL) {
         valid = -1;
@@ -74,7 +92,7 @@ int ctylog (struct parameters* p) {
     uint32_t lines = 0;
     char *newstr = malloc(30 * sizeof(char));
 
-    while (fgets(tmp_str, 78, file) != NULL) {
+    while (fgets(tmp_str, BUFFER_STR, file) != NULL) {
         if (lines == 2) {
             cpy(newstr, (const char*)tmp_str, len((const char*)tmp_str));
         }

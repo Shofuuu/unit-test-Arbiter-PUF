@@ -11,19 +11,17 @@ void uparsetattr (struct parameters *p) {
     p->fname = NULL;
     p->fmode = "a";
 
-    p->port = malloc(13 * sizeof(char));
+    p->crpfname = NULL;
+    p->format = NULL;
+
+    // p->port = malloc(13 * sizeof(char));
     p->port = "/dev/ttyUSB0";
     p->baudrate = 9600;
     p->serial = 0;
 
-    p->challenge = malloc(8 * sizeof(char));
-    p->challenge = malloc(8 * sizeof(char));
-
-    p->challenge = NULL;
-    p->response = NULL;
     p->obytes = 0;
 
-    p->k = 8;
+    p->k = 10;
     p->n = 100;
 
     p->resuming = 0;
@@ -53,63 +51,86 @@ size_t len (const char *str) {
     return count;
 }
 
-/* Bit manipulator */
-void uint64str (uint8_t *dst, uint64_t src) { // 64-bit to single string
-    *dst = 0;
-
-    for (int x=0;x<8;x++) {
-        dst[7-x] = (src & ((uint64_t)0x00000000000000ff << (x*8))) >> (x*8);
-    }
-}
-
-void struint64 (uint64_t *dst, uint8_t *src) { // single string to 64-bit
-    *dst = 0;
-
-    for (int x=0;x<8;x++) {
-        *dst |= (uint64_t)( (uint64_t)src[7-x] << (x*8));
-        // dbgmsg("rspstr", "tmp process : %lX\r\n", dst);
-    }
-}
-
-/* Debugging purpose */
-int __glob_dbg_cnt = 0;
-
-void dbgmsg (const char *label, const char *msg, ...) {
-    va_list argument;
-    char buff[256];
-
-    va_start(argument, msg);
-    vsprintf(buff, msg, argument);
-    va_end(argument);
-
-#ifdef GLOBAL_DEBUG_ENABLED
-    printf("[Debug:%s:%d] ", label, __glob_dbg_cnt);
-    printf("%s", buff);
-    
-    __glob_dbg_cnt++;
-#endif // GLOBAL_DEBUG_ENABLED
-}
-
-/* 64-bit randomizer challenge */
-void rdchgb (uint64_t *challenge) { // Random Challenge Bits
-    uint64_t tmp = 0;
-    uint8_t rnum = 0;
+/* 128-bit randomizer challenge */
+void randomizer (union data_bits_u *c) { // Random Challenge Bits
     struct timeval t;
+    uint16_t rnum = 0, a = 0, b = 0;
+    uint16_t mirror = 0;
+    uint8_t zeros = 0;
 
     gettimeofday(&t, NULL);
     srand(t.tv_usec);
-    
-    for (int x=0;x<8;x++) {
-        rnum = (t.tv_usec - rand())%255; // just random things
 
-        if (rnum >= 0x7F) {
-            rnum = ((t.tv_usec/3) + rand())%255; // just random things
+    for (uint8_t x=0;x<16;x++) {
+        if (x % 3) {
+            gettimeofday(&t, NULL);
+            srand(t.tv_usec);
         }
-    
-        tmp |= ((uint64_t)rnum << (x*8));
+
+        rnum = rand()%65535;
+        b = rnum;
+        a = rnum - (rnum/5);
+
+        for (uint8_t y=0;y<16;y++) {
+            mirror |= ((b-a) & (1 << y));
+        }
+
+        for (uint8_t y=0;y<4;y++) {
+            if ( ( mirror & (1 << (15-y)) ) ) zeros = 1;
+        }
+
+        if (zeros) {
+            mirror = (uint8_t)(a * (uint8_t)(rnum/3.0));
+
+            if (mirror < 0x0F) {
+                mirror = ((uint8_t)(b - (uint8_t)(rnum/2.0)) + x);
+            }
+
+            zeros = 0;
+        }
+
+        c->byte[x] = (uint8_t)mirror;
+
+        a += 2;
+        b -= 3;
+        mirror = 0;
+    }
+}
+
+/* File utility */
+uint32_t flines (const char *fname) {
+    FILE *file = fopen(fname, "a+");
+    char str_tmp[BUFFER_TEXT_FLINES];
+    uint32_t lines = 0;
+
+    // memset(str_tmp, '\0', BUFFER_TEXT_FLINES);
+
+    while (fgets(str_tmp, BUFFER_TEXT_FLINES, file) != NULL) {
+        lines++;
     }
 
-    *challenge = tmp;
+    fclose(file);
+
+    return lines;
+}
+
+/* String formatting */
+void strcrpbin (union data_bits_u *d, char *str) {
+    for (uint8_t x=0;x<16;x++) {
+        d->byte[x] = 0;
+
+        for (uint8_t y=0;y<8;y++) {
+            if (str[y+(8*x)] == '1') {
+                d->byte[x] |= (1 << (7-y));
+            }
+        }
+    }
+
+    /*for (uint8_t x=0;x<16;x++) {
+        printf("%c%X", (d->byte[x] < 0xF ? '0':'\0'), d->byte[x]);
+    }
+
+    printf("\r\n");*/
 }
 
 

@@ -21,7 +21,7 @@
 #include "parameters.h"
 
 int uart_begin (struct parameters *p);
-int uart_iostream (struct parameters *p);
+int uart_iostream (struct parameters *p, union data_bits_u *c, union data_bits_u *r);
 
 #endif // UART_H
 

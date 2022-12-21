@@ -57,33 +57,30 @@ int uart_begin (struct parameters *p) {
     return 0;
 }
 
-int uart_iostream (struct parameters *p) {
+int uart_iostream (struct parameters *p, union data_bits_u *c, union data_bits_u *r) {
     if (p->serial < 0) {
         return -1;
     }
 
     int tmp_bytes = 0;
-    uint8_t cstr[8];
-    uint8_t rstr[8];
 
-    cpy((char*)cstr, (const char*)p->challenge, len((const char*)p->challenge));
-
-    write(p->serial, cstr, sizeof(cstr));
-    dbgmsg("uart_iostream", "Data trasmitted.\r\n");
-
-    tmp_bytes = read(p->serial, &rstr, sizeof(rstr));
-    dbgmsg("uart_iostream", "Data received.\r\n");
+    /* Writing half data (64 bits) */
+    write(p->serial, &c->data[0], sizeof(c->byte));
+    tmp_bytes = read(p->serial, &r->data[0], sizeof(r->byte));
 
     if (tmp_bytes < 0) {
         return -2;
     }
 
-    //cpy((char*)p->response, (const char*)rstr, len((const char*)rstr));
-    p->response = rstr;
+    /* Writing the last data (64 bits) */
+    write(p->serial, &c->data[1], sizeof(c->byte));
+    tmp_bytes = read(p->serial, &r->data[1], sizeof(r->byte));
+
+    if (tmp_bytes < 0) {
+        return -3;
+    }
 
     close(p->serial);
-
-    dbgmsg("uart_iostream", "I/O connection success.\r\n");
     return 0;
 }
 
