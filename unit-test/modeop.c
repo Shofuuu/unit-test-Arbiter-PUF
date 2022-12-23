@@ -15,7 +15,6 @@ void logfwr (struct parameters *p) {
 
     printf("[Info:logfwr] Port location set to : %s\r\n", p->port);
     printf("[Info:logfwr] Logging to : %s\r\n", p->fname);
-    printf("[Info:logfwr] k val : %d, n val : %d\r\n", p->k, p->n);
 
     if (p->resuming) {
         printf("[Info:logfwr] Resuming previous work..\r\n");
@@ -32,19 +31,30 @@ void logfwr (struct parameters *p) {
             return;
         }
 
-        printf("[Info:logfwr] Resuming k at %d\r\n", p->k);
-        printf("[Info:logfwr] Resuming n at %d\r\n", p->n);
-        printf("[Info:logfwr] Last work progress %0.1f%%\r\n", (( (float)((p->unfinished)) / (float)((p->n)+1) ) * 100));
+        printf("[Info:logfwr] k val : %d, n val : %d\r\n", p->k, p->n);
+        printf("[Info:logfwr] Last work progress : %d [%0.1f%%]\r\n", (p->unfinished), (( (float)((p->unfinished)) / (float)((p->n)+1) ) * 100));
+        printf("[Info:logfwr] Remaining job : %d\r\n", ((p->n)-(p->unfinished)));
     } else {
         wlog(p, &challenge, &response, HEAD_DOCS);
     }
     
+    union data_bits_u *average = malloc(sizeof(average) * (p->n));
+    union data_bits_u result;
+
     char *str_print = malloc(80 * sizeof(char)); // string buffer to display string
     int ret = 0;
     float percent = 0;
-    uint8_t first_itr = 1; 
+    uint8_t first_itr = 1;
+    uint8_t byte_average = 0;
 
     for (uint32_t avgcnt = 0;avgcnt<(p->n);avgcnt++) {
+        /* Check, if there is last session
+         * and then continuing the progress by
+         * changing the avgcnt (average counter)
+         * to the last job line. first_itr
+         * used to check whether the avgcnt
+         * already set to unfinished line or not.
+         * */
         if (p->resuming && first_itr) {
             avgcnt = p->unfinished;
 
@@ -65,15 +75,33 @@ void logfwr (struct parameters *p) {
                 return;
             }
 
-           // printf("RESPONSE : %lX %lX\r\n", response.data[0], response.data[1]);
+           average[itrcnt].data[0] = response.data[0];
+           average[itrcnt].data[1] = response.data[1];
         }
 
-        wlog(p, &challenge, &response, BODY_DOCS);
+        /* averaging process */
+        for (uint8_t x=0;x<16;x++) {
+            for (uint8_t y=0;y<8;y++) {
+                for (uint8_t z=0;z<(p->k);z++) {
+                    byte_average += ((average[z].byte[x] & (1 << (7-y))) ? 1:0);
+                }
+
+                byte_average = (uint8_t)((((float)byte_average/(float)(p->k))*10.0) >= 5 ? 1:0);
+
+                if (byte_average) {
+                    result.byte[x] |= (1 << (7-y));
+                }
+
+                byte_average = 0;
+            }
+        }
+
+        wlog(p, &challenge, &result, BODY_DOCS);
 
         sprintf(
-            str_print, "[Info:generating] CHG:RSP (%lX%lX > %lX%lX) : [%0.1f%%]  ", 
+            str_print, "[Info:requesting] CHG:RSP (%lX%lX > %lX%lX) : [%0.1f%%]  ", 
             challenge.data[0], challenge.data[1], 
-            response.data[0], response.data[1],
+            result.data[0], result.data[1],
             percent
         ); // extra space needed to clear screen buffer
         printf("%s", str_print);
@@ -82,11 +110,14 @@ void logfwr (struct parameters *p) {
             printf("\b");
         }
         fflush(stdout);
+
+        result.data[0] = 0;
+        result.data[1] = 0;
     }
 
-    printf("\r\n");
+    printf("\r\n[Info:logfwr] Done.\r\n");
 
-    free(str_print);
+    //free(str_print);
 }
 
 void logcrp (struct parameters *p) {
@@ -104,7 +135,7 @@ void logcrp (struct parameters *p) {
     }
 
     printf("[Info:logcrp] Output set to : %s\r\n", p->fname);
-    printf("[Info:logcrp] Generating %d CRP(s)\r\n", (p->n));
+    printf("[Info:logcrp] Generating %d Challenge Keys\r\n", (p->n));
 
     char *str_tmp = malloc(sizeof(char) * BUFFER_TMP_TEXT);
     float percent = 0.0;
@@ -164,6 +195,7 @@ void logfeed (struct parameters *p) {
 
     char *str_tmp = malloc(sizeof(char) * 80);
     float percent = 0.0;
+    p->n = file_lines;
 
     union data_bits_u *average = malloc(sizeof(average) * file_lines);
     union data_bits_u result;
@@ -216,7 +248,7 @@ void logfeed (struct parameters *p) {
         wlog(p, &challenge, &result, BODY_DOCS);
 
         sprintf(
-            str_tmp, "[Info:logfeed] Feeding the FPGA and harvesting the CRP(s) (%lX%lX > %lX%lX) [%0.1f%%]  ",
+            str_tmp, "[Info:feeding] CHG:CRP (%lX%lX > %lX%lX) [%0.1f%%]  ",
             challenge.data[0], challenge.data[1],
             result.data[0], result.data[1],
             percent
@@ -236,6 +268,8 @@ void logfeed (struct parameters *p) {
     }
 
     printf("\r\n[Info:logfeed] Done.\r\n");
+    
+    free(str_tmp);
 }
 
 

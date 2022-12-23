@@ -78,7 +78,7 @@ int wlog (struct parameters *p, union data_bits_u *c, union data_bits_u *r, unsi
     return valid;
 }
 
-#define BUFFER_STR  150
+#define BUFFER_STR  400
 
 int ctylog (struct parameters* p) {
     FILE *file = fopen(p->fname, "a+");
@@ -150,8 +150,7 @@ void parstr (const char *str, uint32_t *value) {
             if (tmp[x] == 58){
                 en_cp = 1;
                 continue;
-            }
-            else {
+            } else {
                 start_index = x;
                 break;
             }

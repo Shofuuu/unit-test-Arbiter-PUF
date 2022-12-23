@@ -38,7 +38,7 @@ int main(int argc, char* argv[]) {
         " puflog -o [output] -e -n [total CRP]\r\n",
         " puflog -o [output] -f [CRP location] -k [iteration avg]\r\n",
         "\nInformation :\r\n",
-        " \"k (average)\" has default value 10\r\n",
+        " \"k (average)\" has default value 8\r\n",
         " \"n (iteration)\" has default value 100\r\n",
         " \"p (port)\" has default value /dev/ttyUSB0\r\n",
         " \"b (baudrate)\" has default value 9600\r\n",

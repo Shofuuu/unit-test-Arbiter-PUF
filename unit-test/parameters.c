@@ -21,7 +21,7 @@ void uparsetattr (struct parameters *p) {
 
     p->obytes = 0;
 
-    p->k = 10;
+    p->k = 8;
     p->n = 100;
 
     p->resuming = 0;
